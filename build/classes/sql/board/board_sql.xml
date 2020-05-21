@@ -1,0 +1,297 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="board">
+    
+    <resultMap type="com.spring.board.vo.BoardVo" id="boardVo">
+    	<result property="boardType" 	column="BOARD_TYPE"/>
+    	<result property="boardNum" 	column="BOARD_NUM"/>
+    	<result property="boardTitle" 	column="BOARD_TITLE"/>
+    	<result property="boardComment" column="BOARD_COMMENT"/>
+    	
+    	<collection property="comCodeVo" resultMap="comCodeVo" />
+    	<collection property="userVo"    resultMap="userVo" />
+    </resultMap>
+    
+    <resultMap type="com.spring.board.vo.ComCodeVo" id="comCodeVo">
+    	<result property="codeType" column="CODE_TYPE" />
+    	<result property="codeId"   column="CODE_ID" />
+    	<result property="codeName" column="CODE_NAME" />
+    </resultMap>
+    
+    <resultMap type="com.spring.board.vo.UserVo" id="userVo">
+    	<result property="userId"      column="USER_ID"/>
+    	<result property="userPw"      column="USER_PW"/>
+    	<result property="userName"    column="USER_NAME"/>
+    	<result property="userPhone1"  column="USER_PHONE1"/>
+    	<result property="userPhone2"  column="USER_PHONE2"/>
+    	<result property="userPhone3"  column="USER_PHONE3"/>
+    	<result property="userAddr1"   column="USER_ADDR1"/>
+    	<result property="userAddr2"   column="USER_ADDR2"/>
+    	<result property="userCompany" column="USER_COMPANY"/>
+    </resultMap>
+    
+    <select id="boardList" parameterType="com.spring.board.vo.PageVo" resultMap="boardVo">
+        /* board.boardList */
+        SELECT BOARD_TYPE
+		  	 , BOARD_NUM
+		  	 , BOARD_TITLE
+		  	 , BOARD_COMMENT
+		  	 , TOTAL_CNT
+		  	 , CODE_NAME
+		  FROM (
+			   SELECT BOARD_TYPE
+				    , BOARD_NUM
+				    , BOARD_TITLE
+				    , BOARD_COMMENT
+			        , ROW_NUMBER() OVER(ORDER BY BOARD_NUM DESC) AS NUMROW
+			        , COUNT(*) OVER() AS TOTAL_CNT
+			        , CODE_NAME
+				 FROM BOARD,COM_CODE	
+				WHERE BOARD.BOARD_TYPE = COM_CODE.CODE_ID
+				)
+		 WHERE NUMROW BETWEEN #{startRow} AND #{endRow}
+    </select>
+    <select id="boardSearchList" parameterType="com.spring.board.vo.PageVo" resultMap="boardVo">
+        /* board.boardList */
+        SELECT BOARD_TYPE
+		  	 , BOARD_NUM
+		  	 , BOARD_TITLE
+		  	 , BOARD_COMMENT
+		  	 , TOTAL_CNT
+		  	 , CODE_NAME
+		  FROM (
+			   SELECT BOARD_TYPE
+				    , BOARD_NUM
+				    , BOARD_TITLE
+				    , BOARD_COMMENT
+			        , ROW_NUMBER() OVER(ORDER BY BOARD_NUM DESC) AS NUMROW
+			        , COUNT(*) OVER() AS TOTAL_CNT
+			        , CODE_NAME
+				 FROM BOARD,COM_CODE	
+				WHERE BOARD.BOARD_TYPE = COM_CODE.CODE_ID
+				)
+		WHERE BOARD_TITLE LIKE '%'||#{keyword}||'%'
+<!-- 		  AND NUMROW BETWEEN #{startRow} AND #{endRow} -->
+    </select>
+    
+    <select id="boardTotal" parameterType="Integer" resultType="Integer">
+    	/* board.boardTotal */
+		  SELECT COUNT(*) AS TOTAL_CNT
+			FROM BOARD	
+    </select>
+    	
+    <select id="boardView" parameterType="com.spring.board.vo.BoardVo" resultMap="boardVo">
+    	/* board.boardView */
+    	SELECT BOARD_TYPE
+			 , BOARD_NUM
+			 , BOARD_TITLE
+			 , BOARD_COMMENT
+			 , CODE_NAME
+		  FROM BOARD, COM_CODE
+		 WHERE BOARD.BOARD_TYPE = COM_CODE.CODE_ID 
+    	   AND BOARD_TYPE = #{boardType}
+    	   AND BOARD_NUM  = #{boardNum}
+    </select>	
+    
+    <select id="boardInsert" parameterType="com.spring.board.vo.BoardVo">
+    	/* board.boardInsert */
+        INSERT INTO 
+        BOARD
+        (BOARD_TYPE
+        ,BOARD_NUM
+        ,BOARD_TITLE
+        ,BOARD_COMMENT
+        ,CREATOR
+        ,CREATE_TIME
+        ,MODIFIER
+        ,MODIFIED_TIME
+        )
+        VALUES
+        (#{boardType}
+        ,(SELECT NVL(TO_NUMBER(MAX(BOARD_NUM)+1),1)
+	    FROM BOARD
+	    WHERE BOARD_TYPE = #{boardType})
+        ,#{boardTitle}
+        ,#{boardComment}
+        ,'SYSTEM'
+        ,TO_CHAR(SYSDATE)
+        ,'SYSTEM'
+        ,TO_CHAR(SYSDATE)
+        )
+    </select>
+    <delete id="boardDelete" parameterType="com.spring.board.vo.BoardVo">
+    	/* board.boardDelete */
+    	DELETE FROM BOARD
+    	 WHERE BOARD_TYPE = #{boardType}
+    	   AND BOARD_NUM  = #{boardNum}
+    </delete>
+    
+    <update id="boardUpdate" parameterType="com.spring.board.vo.BoardVo">
+    	/* board.boardUpdate */
+    	UPDATE BOARD 
+    	   SET BOARD_TITLE = #{boardTitle}
+    	     , BOARD_COMMENT = #{boardComment}
+    	 WHERE BOARD_TYPE = #{boardType}
+    	   AND BOARD_NUM  = #{boardNum}
+    </update>
+    
+    <select id="codeList" parameterType="com.spring.board.vo.ComCodeVo" resultMap="comCodeVo">
+    /* board.codeList */
+    	SELECT CODE_TYPE
+    		 , CODE_ID
+    		 , CODE_NAME
+    	  FROM COM_CODE
+    </select>
+    
+    <select id="boardSearch" parameterType="com.spring.board.vo.PageVo" resultMap="boardVo">
+     /* board.boardSearch */
+        SELECT BOARD_TYPE
+		  	 , BOARD_NUM
+		  	 , BOARD_TITLE
+		  	 , BOARD_COMMENT
+		  	 , TOTAL_CNT
+		  	 , CODE_NAME
+		  FROM 
+		  (
+			   SELECT BOARD_TYPE
+				    , BOARD_NUM
+				    , BOARD_TITLE
+				    , BOARD_COMMENT
+			        , ROW_NUMBER() OVER(ORDER BY BOARD_NUM DESC) AS NUMROW
+			        , COUNT(*) OVER() AS TOTAL_CNT
+			        , CODE_NAME
+				 FROM BOARD,COM_CODE	
+				WHERE BOARD.BOARD_TYPE = COM_CODE.CODE_ID
+				<choose>
+				<when test="list != null">
+					AND BOARD_TYPE IN
+					<foreach item="item" index="index" collection="list" open="(" separator="," close=")">
+			        	#{item}
+			  		</foreach> 
+				</when>
+				<when test="keyword != null and keyword !='' ">
+					AND BOARD_TITLE LIKE '%'|| #{keyword,jdbcType=VARCHAR} ||'%' 
+				</when>
+				</choose>
+				<!--
+ 				<if test="list != null">
+					AND BOARD_TYPE IN
+					<foreach item="item" index="index" collection="list" open="(" separator="," close=")">
+			        	#{item}
+			  		</foreach> 
+		  		</if>
+		  		 -->
+			)
+		 WHERE NUMROW BETWEEN #{startRow} AND #{endRow}
+    </select>
+    
+    <select id="boardSearchCnt" parameterType="Integer" resultType="Integer">
+     /* board.boardSearchCnt */
+        SELECT COUNT(*) AS TOTAL_CNT
+		  FROM BOARD
+		<choose>
+			<when test="list != null">
+				WHERE BOARD_TYPE IN
+				<foreach item="item" index="index" collection="list" open="(" separator="," close=")">
+					#{item}
+				</foreach> 
+			</when>
+			<when test="keyword != null and keyword !='' ">
+				WHERE BOARD_TITLE LIKE '%'|| #{keyword,jdbcType=VARCHAR} ||'%' 
+			</when>
+		</choose>
+		<!--	  
+ 		<if test="list != null"> 
+		 WHERE BOARD_TYPE IN
+			<foreach item="item" index="index" collection="list" open="(" separator="," close=")">
+			 	#{item}
+			 </foreach> 
+		 </if>
+		 -->
+    </select>
+    
+    <insert id="boardInsertAll" parameterType="List">
+    /* board.boardInsertAll */
+        INSERT INTO 
+        BOARD
+        (BOARD_TYPE
+        ,BOARD_NUM
+        ,BOARD_TITLE
+        ,BOARD_COMMENT
+        ,CREATOR
+        ,CREATE_TIME
+        ,MODIFIER
+        ,MODIFIED_TIME
+        )
+        SELECT a.* FROM (
+        <foreach collection="list" item="item" separator="UNION ALL" index="index">
+		    SELECT #{item.boardType} as boardType
+		          ,(SELECT NVL(TO_NUMBER(MAX(BOARD_NUM)+(#{index}+1)),1) FROM BOARD WHERE BOARD_TYPE = #{item.boardType}) as boardNum
+		          ,#{item.boardTitle} as boardTitle
+		          ,#{item.boardComment} as boardComment
+		          ,'SYSTEM' as creator
+		          ,TO_CHAR(SYSDATE) as createTime
+		          ,'SYSTEM' as modifier
+		          ,TO_CHAR(SYSDATE) as modifiedTime
+		    FROM DUAL
+        </foreach>
+        ) a
+    </insert>
+    
+    <select id="userLogin" resultType="int">
+    	SELECT COUNT(*)
+    	  FROM USER_INFO
+    	 WHERE USER_ID = #{userId}
+    	   AND USER_PW = #{userPw}
+    </select>
+    
+    <insert id="userJoin" parameterType="com.spring.board.vo.UserVo">
+    	INSERT INTO
+    	USER_INFO 
+    	 (
+    		USER_ID
+    	   ,USER_PW
+    	   ,USER_NAME
+    	   ,USER_PHONE1
+    	   ,USER_PHONE2
+    	   ,USER_PHONE3
+    	   ,USER_ADDR1
+    	   ,USER_ADDR2
+    	   ,USER_COMPANY
+    	  )
+    	VALUES 
+    	 (
+    		#{userId}
+    	   ,#{userPw}
+    	   ,#{userName}
+    	   ,#{userPhone1}
+    	   ,#{userPhone2}
+    	   ,#{userPhone3}
+    	   ,#{userAddr1}
+    	   ,#{userAddr2}
+    	   ,#{userCompany}
+    	 ) 	
+    </insert>
+    
+    <select id="selectUser" parameterType="com.spring.board.vo.UserVo" resultMap="userVo">
+    	SELECT USER_ID
+    		 , USER_PW
+    		 , USER_NAME
+    		 , USER_PHONE1
+    		 , USER_PHONE2
+    		 , USER_PHONE3
+    		 , USER_ADDR1
+    		 , USER_ADDR2
+    		 , USER_COMPANY
+    	  FROM USER_INFO
+    	 WHERE USER_ID = #{userId}
+    </select>
+    
+    <select id="idCheck" resultType="int">
+    	SELECT COUNT(*)
+    	  FROM USER_INFO
+    	 WHERE USER_ID = #{userId}
+    </select>
+    
+    
+</mapper>
